@@ -14,10 +14,11 @@ import shlex
 import sys
 import typing as t
 import json
+from pathlib import Path # Added import
 
 from mcp.client.stdio import StdioServerParameters
 
-from .config_loader import load_named_server_configs_from_file
+# from .config_loader import load_named_server_configs_from_file # Removed import
 from .mcp_server import MCPServerSettings, run_mcp_server
 from .sse_client import run_sse_client
 
@@ -216,51 +217,13 @@ def main() -> None:
         logger.info(f"Configured default server: {args_parsed.command_or_url} {' '.join(args_parsed.args)}")
 
 
-    # Configure named servers
-    if args_parsed.named_server_config:
-        if args_parsed.named_server_definitions:
-            logger.warning("--named-server CLI arguments are ignored when --named-server-config is provided.")
-        try:
-            named_stdio_params = load_named_server_configs_from_file(
-                args_parsed.named_server_config, base_env
-            )
-        except (FileNotFoundError, json.JSONDecodeError, ValueError) as e:
-            # Specific errors are already logged by the loader function
-            # We log a generic message here before exiting
-            logger.error(f"Failed to load server configurations from {args_parsed.named_server_config}. Exiting.")
-            sys.exit(1)
-        except Exception as e: # Catch any other unexpected errors from loader
-            logger.error(f"An unexpected error occurred while loading server configurations from {args_parsed.named_server_config}: {e}. Exiting.")
-            sys.exit(1)
+    # Named server configuration path (if provided)
+    named_server_config_path_obj = Path(args_parsed.named_server_config) if args_parsed.named_server_config else None
 
-    elif args_parsed.named_server_definitions:
-        for name, command_string in args_parsed.named_server_definitions:
-            try:
-                command_parts = shlex.split(command_string)
-                if not command_parts: # Handle empty command_string
-                    logger.error(f"Empty COMMAND_STRING for named server '{name}'. Skipping.")
-                    continue
-                command = command_parts[0]
-                command_args = command_parts[1:]
-                # Named servers inherit base_env (which includes passed-through env)
-                # and use the proxy's CWD.
-                named_stdio_params[name] = StdioServerParameters(
-                    command=command,
-                    args=command_args,
-                    env=base_env.copy(), # Each named server gets a copy of the base env
-                    cwd=None, # Named servers run in the proxy's CWD
-                )
-                logger.info(f"Configured named server '{name}': {command_string}")
-            except IndexError: # Should be caught by the check for empty command_parts
-                logger.error(f"Invalid COMMAND_STRING for named server '{name}': '{command_string}'. Must include a command.")
-                sys.exit(1)
-            except Exception as e:
-                logger.error(f"Error parsing COMMAND_STRING for named server '{name}': {e}")
-                sys.exit(1)
-
-    if not default_stdio_params and not named_stdio_params:
+    # Ensure that either a default server or some form of named server config is present
+    if not default_stdio_params and not named_server_config_path_obj and not args_parsed.named_server_definitions:
         parser.print_help()
-        logger.error("No stdio servers configured. Provide a default command or use --named-server.")
+        logger.error("No stdio servers configured. Provide a default command, --named-server-config, or --named-server.")
         sys.exit(1)
 
     mcp_settings = MCPServerSettings(
@@ -272,9 +235,11 @@ def main() -> None:
     )
 
     asyncio.run(run_mcp_server(
+        mcp_settings=mcp_settings,
         default_server_params=default_stdio_params,
-        named_server_params=named_stdio_params,
-        mcp_settings=mcp_settings
+        named_server_config_path=named_server_config_path_obj,
+        base_env=base_env,
+        raw_named_server_args=args_parsed.named_server_definitions # Pass raw CLI args
     ))
 
 if __name__ == "__main__":
