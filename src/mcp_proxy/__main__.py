@@ -169,9 +169,18 @@ def main() -> None:
     )
     logger = logging.getLogger(__name__)
 
-    if not args_parsed.command_or_url and not args_parsed.named_server_definitions:
+    # Initial check to ensure some form of server definition is attempted for stdio mode
+    # This check allows proceeding if a config file is specified,
+    # as the actual loading and validation of servers from the file happens later.
+    if (
+        not args_parsed.command_or_url and
+        not args_parsed.named_server_definitions and
+        not args_parsed.named_server_config and
+        # Only apply this check if not in SSE client mode (i.e., command_or_url is not an http/https URL)
+        not (args_parsed.command_or_url and (args_parsed.command_or_url.startswith("http://") or args_parsed.command_or_url.startswith("https://")))
+    ):
         parser.print_help()
-        logger.error("Either a command_or_url for a default server or at least one --named-server must be provided for stdio mode.")
+        logger.error("For stdio server mode, provide a default command, or --named-server arguments, or a --named-server-config file.")
         sys.exit(1)
 
     if (

@@ -152,19 +152,19 @@ mcp-proxy --host=0.0.0.0 --port=8080 uvx mcp-server-fetch
 mcp-proxy --port=8080 -- uvx mcp-server-fetch --user-agent=YourUserAgent
 
 # Start multiple named MCP servers behind the proxy
-mcp-proxy --port=8080 --named-server fetch1 'uvx mcp-server-fetch --timeout 10' --named-server fetch2 'uvx mcp-server-fetch --user-agent MyAgent'
+mcp-proxy --port=8080 --named-server fetch 'uvx mcp-server-fetch --timeout 10' --named-server fetch2 'uvx mcp-server-fetch --user-agent MyAgent'
 
 # Start multiple named MCP servers using a configuration file
 mcp-proxy --port=8080 --named-server-config ./servers.json
 ```
 
 If a default server is specified (the `command_or_url` argument without `--named-server` or `--named-server-config`), it will be accessible at the root paths (e.g., `http://127.0.0.1:8080/sse`).
-Named servers (whether defined by `--named-server` or `--named-server-config`) will be accessible under `/servers/<server-name>/` (e.g., `http://127.0.0.1:8080/servers/fetch1/sse`).
+Named servers (whether defined by `--named-server` or `--named-server-config`) will be accessible under `/servers/<server-name>/` (e.g., `http://127.0.0.1:8080/servers/fetch/sse`).
 The `/status` endpoint provides global status.
 
 **JSON Configuration File Format for `--named-server-config`:**
 
-The JSON file should follow this structure:
+As per the [config_example.json](./config_example.json) the file should follow this structure:
 
 ```json
 {
@@ -195,6 +195,7 @@ The JSON file should follow this structure:
   }
 }
 ```
+
 - `mcpServers`: A dictionary where each key is the server name (used in the URL path, e.g., `/servers/fetch/`) and the value is an object defining the server.
 - `command`: (Required) The command to execute for the stdio server.
 - `args`: (Optional) A list of arguments for the command. Defaults to an empty list.
@@ -354,7 +355,7 @@ Examples:
   mcp-proxy http://localhost:8080/sse
   mcp-proxy --headers Authorization 'Bearer YOUR_TOKEN' http://localhost:8080/sse
   mcp-proxy --port 8080 -- my-default-command --arg1 value1
-  mcp-proxy --port 8080 --named-server fetch1 'uvx mcp-server-fetch' --named-server tool2 'my-custom-tool --verbose'
+  mcp-proxy --port 8080 --named-server fetch 'uvx mcp-server-fetch' --named-server tool2 'my-custom-tool --verbose'
   mcp-proxy --port 8080 --named-server-config /path/to/servers.json
   mcp-proxy --port 8080 --named-server-config /path/to/servers.json -- my-default-command --arg1
   mcp-proxy --port 8080 -e KEY VALUE -e ANOTHER_KEY ANOTHER_VALUE -- my-default-command
